@@ -3,16 +3,16 @@
     "node": "^16",
     "npm": "^8"
   },
-  "name": "javascript-action",
+  "name": "pr-merge-commitlint",
   "version": "1.0.0",
-  "description": "JavaScript Action Template",
+  "description": "Checks if PR title & description fits commitlint config",
   "main": "index.js",
   "scripts": {
     "prepare": "tsc && ncc build dist/index.js -o dist && cat patch.js dist/index.js > dist/temp.js && mv dist/temp.js dist/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/javascript-action.git"
+    "url": "git+https://github.com/AlexisTM/pr-merge-commitlint.git"
   },
   "keywords": [
     "GitHub",
@@ -22,12 +22,14 @@
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/actions/javascript-action/issues"
+    "url": "https://github.com/AlexisTM/pr-merge-commitlint/issues"
   },
-  "homepage": "https://github.com/actions/javascript-action#readme",
+  "homepage": "https://github.com/AlexisTM/pr-merge-commitlint#readme",
   "dependencies": {
     "@actions/core": "^1.10.0",
     "@actions/github": "^5.1.1",
+    "@commitlint/lint": "^17.7.0",
+    "@commitlint/load": "^17.7.2",
     "typescript": "^5.0.4"
   },
   "devDependencies": {

@@ -3,6 +3,9 @@ import * as core from "@actions/core";
 import { readFileSync } from "fs";
 import { join } from "path";
 import https from "node:https";
+import { stringify } from "querystring";
+const load = require('@commitlint/load').default;
+const lint = require('@commitlint/lint').default;
 
 const context = github.context;
 let octokit: ReturnType<typeof github.getOctokit>;
@@ -26,33 +29,6 @@ type ConfigType = {
   };
 };
 
-async function titleCheckFailed({
-  config: { MESSAGES, LABEL, CHECKS },
-}: {
-  config: ConfigType;
-}) {
-  try {
-    if (MESSAGES.notice.length) {
-      core.notice(MESSAGES.notice);
-    }
-
-    await addLabel({ name: LABEL.name });
-
-    if (CHECKS.alwaysPassCI) {
-      core.info(MESSAGES.failure);
-    } else {
-      core.setFailed(MESSAGES.failure);
-    }
-  } catch (error) {
-    core.info(error);
-    if (CHECKS.alwaysPassCI) {
-      core.info(`Failed to add label (${LABEL.name}) to PR`);
-    } else {
-      core.setFailed(`Failed to add label (${LABEL.name}) to PR`);
-    }
-  }
-}
-
 async function createLabel({
   label: { name, color },
 }: {
@@ -75,22 +51,6 @@ async function createLabel({
     // Might not always be due to label's existence
     core.info(`Label (${name}) already created.`);
   }
-}
-
-async function addLabel({ name }: { name: string }) {
-  if (name === "") {
-    return;
-  }
-
-  core.info(`Adding label (${name}) to PR...`);
-  const addLabelResponse = await octokit.rest.issues.addLabels({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    issue_number: context.issue.number,
-    labels: [name],
-  });
-
-  core.info(`Added label (${name}) to PR - ${addLabelResponse.status}`);
 }
 
 async function removeLabel({
@@ -247,7 +207,9 @@ const run = async ({
 
   try {
     const title = context.payload.pull_request.title;
+    const body = context.payload.pull_request.body;
     const labels = context.payload.pull_request.labels;
+
 
     let config: ConfigType;
     try {
@@ -278,38 +240,42 @@ const run = async ({
     MESSAGES.failure = MESSAGES.failure || "Failing CI test";
     MESSAGES.notice = MESSAGES.notice || "";
 
-    for (let i = 0; i < labels.length; i++) {
-      for (let j = 0; j < CHECKS.ignoreLabels.length; j++) {
-        if (labels[i].name == CHECKS.ignoreLabels[j]) {
-          core.info(`Ignoring Title Check for label - ${labels[i].name}`);
-          removeLabel({ labels, name: LABEL.name });
-          return;
-        }
-      }
-    }
-
     await createLabel({ label: LABEL });
 
-    if (CHECKS.prefixes && CHECKS.prefixes.length) {
-      for (let i = 0; i < CHECKS.prefixes.length; i++) {
-        if (title.startsWith(CHECKS.prefixes[i])) {
+
+    const commitlint_input = title + "\n\n" + body;
+
+    const CONFIG = {
+      extends: ['@commitlint/config-conventional'],
+    };
+
+    load(CONFIG)
+      .then((opts: any) =>
+        lint(
+          commitlint_input,
+          opts.rules,
+          opts.parserPreset ? {parserOpts: opts.parserPreset.parserOpts} : {}
+        )
+      )
+      .then((report: any) => {
+        if(report.value) {
           removeLabel({ labels, name: LABEL.name });
           core.info(MESSAGES.success);
-          return;
+        } else {
+          core.info(stringify(report));
         }
-      }
-    }
+        console.log(report)
+      });
+    /* =>
+        { valid: false,
+          errors:
+          [ { level: 2,
+              valid: false,
+              name: 'type-enum',
+              message: 'type must be one of [build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test]' } ],
+          warnings: [] }
+        */
 
-    if (CHECKS.regexp) {
-      let re = new RegExp(CHECKS.regexp, CHECKS.regexpFlags || "");
-      if (re.test(title)) {
-        removeLabel({ labels, name: LABEL.name });
-        core.info(MESSAGES.success);
-        return;
-      }
-    }
-
-    await titleCheckFailed({ config: { LABEL, CHECKS, MESSAGES } });
   } catch (error) {
     core.info(error);
   }

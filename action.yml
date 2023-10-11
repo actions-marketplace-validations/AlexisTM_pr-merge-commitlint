@@ -1,5 +1,5 @@
-name: PR Title Checker
-description: Checks if the PR Title follows contribution guidelines
+name: PR Merge Commitlint
+description: Checks if the PR title and description follows commitlint header and body/footer respectively.
 branding:
   icon: tag
   color: purple
@@ -12,7 +12,10 @@ inputs:
     default: false
   configuration_path:
     description: config file path
-    default: .github/pr-title-checker-config.json
+    default: .github/pr-merge-commitlint.json
+  commitlint_path:
+    description: Commitlint configuration
+    default: .commitlint/commitlint.config.js
   local_configuration_path:
     description: use a local configuration file present in file system of the instance running the action
     required: false
@@ -26,7 +29,7 @@ inputs:
     description: the repo in which the config file is present. defaults to the repo in which the action is run
     required: false
   github_configuration_path:
-    description: the path to the config file in the github repo. defaults to .github/pr-title-checker-config.json
+    description: the path to the config file in the github repo. defaults to .github/pr-merge-commitlint.json
     required: false
   github_configuration_ref:
     description: the named branch, tag, or SHA from which the config file is pulled. defaults to the latest commit on the default branch
